@@ -1,10 +1,15 @@
-import { Play, Pause, Trash2 } from 'lucide-react';
+import { Play, Pause, Trash2, Heart, User } from 'lucide-react';
 import { useState, useContext } from 'react';
 import { Link } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
 import { AudioContext } from '../../context/AudioContext'; // FIXED: use named import
+import { playlistService } from '../../services/api';
 
-const PlaylistCard = ({ playlist, onDelete }) => {
+const PlaylistCard = ({ playlist, onDelete, isPublic = false }) => {
   const [isHovered, setIsHovered] = useState(false);
+  const [isLiked, setIsLiked] = useState(false);
+  const [likesCount, setLikesCount] = useState(playlist.likes?.length || 0);
+  const [loadingLike, setLoadingLike] = useState(false);
   const { playQueue, currentSong, isPlaying, pauseSong, queue } = useContext(AudioContext);
   
   // Check if this playlist is currently playing
@@ -34,13 +39,33 @@ const PlaylistCard = ({ playlist, onDelete }) => {
       playQueue(playlist.songs, 0);
     }
   };
-  
-  // Handle delete
+    // Handle delete
   const handleDelete = (e) => {
     e.preventDefault();
     e.stopPropagation();
     if (onDelete) {
       onDelete(playlist._id);
+    }
+  };
+
+  // Handle like/unlike for public playlists
+  const handleLike = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!isPublic) return;
+    
+    setLoadingLike(true);
+    try {
+      const result = await playlistService.togglePlaylistLike(playlist._id);
+      setIsLiked(result.isLiked);
+      setLikesCount(result.likesCount);
+      toast.success(result.message);
+    } catch (error) {
+      console.error('Error toggling playlist like:', error);
+      toast.error('Failed to update like status');
+    } finally {
+      setLoadingLike(false);
     }
   };
   
@@ -96,20 +121,33 @@ const PlaylistCard = ({ playlist, onDelete }) => {
               🎵
             </div>
           )}
-          
-          {/* Delete button */}
-          {onDelete && (
-            <button
-              className={`absolute top-2 right-2 rounded-full p-2 bg-red-600/80 text-white transform 
-                transition-all duration-200 
-                ${isHovered ? 'opacity-100' : 'opacity-0'} 
-                hover:bg-red-600 hover:scale-105`}
-              onClick={handleDelete}
-              title="Delete playlist"
-            >
-              <Trash2 size={16} />
-            </button>
-          )}
+            {/* Action buttons overlay */}
+          <div className={`absolute top-2 right-2 flex space-x-2 transition-opacity duration-200 ${isHovered ? 'opacity-100' : 'opacity-0'}`}>
+            {/* Like button for public playlists */}
+            {isPublic && (
+              <button
+                className={`rounded-full p-2 shadow-lg transition-all duration-200 hover:scale-105 ${
+                  isLiked ? 'bg-red-600 text-white' : 'bg-black/50 text-white hover:bg-black/70'
+                } ${loadingLike ? 'opacity-50 cursor-not-allowed' : ''}`}
+                onClick={handleLike}
+                disabled={loadingLike}
+                title={isLiked ? 'Unlike playlist' : 'Like playlist'}
+              >
+                <Heart size={16} fill={isLiked ? 'currentColor' : 'none'} />
+              </button>
+            )}
+            
+            {/* Delete button for user playlists */}
+            {onDelete && !isPublic && (
+              <button
+                className="rounded-full p-2 bg-red-600/80 text-white transition-all duration-200 hover:bg-red-600 hover:scale-105"
+                onClick={handleDelete}
+                title="Delete playlist"
+              >
+                <Trash2 size={16} />
+              </button>
+            )}
+          </div>
           
           {/* Play button overlay */}
           <button
@@ -127,14 +165,29 @@ const PlaylistCard = ({ playlist, onDelete }) => {
             )}
           </button>
         </div>
-        
-        {/* Playlist info */}
+          {/* Playlist info */}
         <h3 className={`font-semibold ${playlistIsCurrentlyPlaying ? 'text-chakra-accent' : 'text-white'} mb-1 truncate`}>
           {playlist.name}
         </h3>
         <p className="text-sm text-chakra-subtext truncate">
           {playlist.songs ? playlist.songs.length : 0} songs
         </p>
+        
+        {/* Public playlist additional info */}
+        {isPublic && (
+          <div className="flex items-center justify-between mt-2 text-xs text-gray-400">
+            <div className="flex items-center">
+              <User size={12} className="mr-1" />
+              <span>{playlist.owner?.username || 'Unknown'}</span>
+            </div>
+            {likesCount > 0 && (
+              <div className="flex items-center">
+                <Heart size={12} className="mr-1" />
+                <span>{likesCount}</span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </Link>
   );

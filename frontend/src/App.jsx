@@ -90,8 +90,7 @@ function App() {
                 <CreatePlaylist />
               </ProtectedRoute>
             } 
-          />
-          <Route 
+          />          <Route 
             path="/playlist/:id" 
             element={
               <ProtectedRoute>

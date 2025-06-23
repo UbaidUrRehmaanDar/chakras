@@ -115,8 +115,7 @@ export const AuthProvider = ({ children }) => {
     setToken(null);
     setUser(null);
     delete axios.defaults.headers.common['x-auth-token'];
-  };
-  // Update user profile
+  };  // Update user profile
   const updateProfile = async (formData) => {
     try {
       setLoading(true);
@@ -139,6 +138,13 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Update user state directly (for external updates)
+  const updateUser = (userData) => {
+    setUser(prevUser => ({
+      ...prevUser,
+      ...userData
+    }));
+  };
   return (
     <AuthContext.Provider
       value={{
@@ -150,6 +156,7 @@ export const AuthProvider = ({ children }) => {
         login,
         logout,
         updateProfile,
+        updateUser,
         isAuthenticated: !!user,
       }}
     >

@@ -367,4 +367,58 @@ router.delete('/cleanup/favorites', authMiddleware, async (req, res) => {
     }
 });
 
+// GET /api/playlists/:id - Get a specific playlist by ID
+router.get('/:id', async (req, res) => {
+    const { id } = req.params;
+    
+    try {
+        // First try to find in current user's playlists (if authenticated)
+        if (req.headers['x-auth-token']) {
+            try {
+                const decoded = require('jsonwebtoken').verify(req.headers['x-auth-token'], process.env.JWT_SECRET || 'your-jwt-secret');
+                const user = await User.findById(decoded.user.id).populate({
+                    path: 'playlists.songs',
+                    model: 'Song'
+                });
+                
+                if (user) {
+                    const userPlaylist = user.playlists.find(p => p._id.toString() === id);
+                    if (userPlaylist) {
+                        return res.json(userPlaylist);
+                    }
+                }
+            } catch (authError) {
+                // Continue to search in public playlists if auth fails
+            }
+        }
+        
+        // If not found in user's playlists or no auth, search in public playlists
+        const users = await User.find({
+            'playlists._id': id,
+            'playlists.isPublic': true
+        }).populate({
+            path: 'playlists.songs',
+            model: 'Song'
+        }).select('username playlists');
+        
+        for (const user of users) {
+            const playlist = user.playlists.find(p => p._id.toString() === id && p.isPublic);
+            if (playlist) {
+                return res.json({
+                    ...playlist.toObject(),
+                    owner: {
+                        _id: user._id,
+                        username: user.username
+                    }
+                });
+            }
+        }
+        
+        res.status(404).json({ message: 'Playlist not found' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
 module.exports = router;

@@ -9,12 +9,12 @@ import { AudioContext } from '../context/AudioContext';
 const Home = () => {
   const [songs, setSongs] = useState([]);
   const [playlists, setPlaylists] = useState([]);
+  const [publicPlaylists, setPublicPlaylists] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
   // Use global audio context instead of local state
   const { currentSong, isPlaying } = useContext(AudioContext);
-
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -23,10 +23,14 @@ const Home = () => {
         const songsData = await songService.getAllSongs();
         setSongs(songsData);
         
-        // Fetch playlists
+        // Fetch user playlists and public playlists
         try {
-          const playlistsData = await playlistService.getAllPlaylists();
+          const [playlistsData, publicPlaylistsData] = await Promise.all([
+            playlistService.getAllPlaylists(),
+            playlistService.getPublicPlaylists()
+          ]);
           setPlaylists(playlistsData);
+          setPublicPlaylists(publicPlaylistsData);
         } catch (playlistError) {
           console.error('Error fetching playlists:', playlistError);
           
@@ -43,6 +47,7 @@ const Home = () => {
               songs: songsData.slice(2, 5),
             }
           ]);
+          setPublicPlaylists([]);
         }
         
         setError(null);
@@ -68,21 +73,39 @@ const Home = () => {
           <div className="bg-red-900/30 text-red-200 p-4 rounded-md my-4">
             {error}
           </div>
-        ) : (
-          <>
-            {/* Featured Playlists */}
-            <section className="mb-8">
-              <h2 className="text-2xl font-bold mb-4">Featured Playlists</h2>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-6">
-                {playlists.slice(0, 6).map((playlist) => (
-                  <PlaylistCard 
-                    key={playlist._id} 
-                    playlist={playlist}
-                  />
-                ))}
-              </div>
-            </section>
-              {/* Recently Added */}
+        ) : (          <>
+            {/* Your Playlists */}
+            {playlists.length > 0 && (
+              <section className="mb-8">
+                <h2 className="text-2xl font-bold mb-4">Your Playlists</h2>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+                  {playlists.slice(0, 6).map((playlist) => (
+                    <PlaylistCard 
+                      key={playlist._id} 
+                      playlist={playlist}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Public Playlists */}
+            {publicPlaylists.length > 0 && (
+              <section className="mb-8">
+                <h2 className="text-2xl font-bold mb-4">Discover Public Playlists</h2>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+                  {publicPlaylists.slice(0, 6).map((playlist) => (
+                    <PlaylistCard 
+                      key={playlist._id} 
+                      playlist={playlist}
+                      isPublic={true}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Recently Added */}
             <section className="mb-8">
               <h2 className="text-2xl font-bold mb-4">Recently Added</h2>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-6">

@@ -1,10 +1,41 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const multer = require('multer');
+const path = require('path');
 const User = require('../models/User');
 const authMiddleware = require('../middleware/auth');
 
 const router = express.Router();
+
+// Configure multer for avatar uploads
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, 'uploads/');
+    },
+    filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, 'avatar-' + uniqueSuffix + path.extname(file.originalname));
+    }
+});
+
+const upload = multer({
+    storage: storage,
+    limits: {
+        fileSize: 5 * 1024 * 1024 // 5MB limit
+    },
+    fileFilter: (req, file, cb) => {
+        const allowedTypes = /jpeg|jpg|png|gif/;
+        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+        const mimetype = allowedTypes.test(file.mimetype);
+        
+        if (mimetype && extname) {
+            return cb(null, true);
+        } else {
+            cb(new Error('Only image files are allowed!'));
+        }
+    }
+});
 
 // Register route
 router.post('/register', async (req, res) => {
@@ -130,6 +161,14 @@ router.put('/profile', authMiddleware, async (req, res) => {
             }
         }
         
+        // Check if email is already taken (if updating email)
+        if (email) {
+            const existingUser = await User.findOne({ email });
+            if (existingUser && existingUser._id.toString() !== req.user.id) {
+                return res.status(400).json({ message: 'Email already taken' });
+            }
+        }
+        
         // Update user profile
         const updatedUser = await User.findByIdAndUpdate(
             req.user.id, 
@@ -137,7 +176,82 @@ router.put('/profile', authMiddleware, async (req, res) => {
             { new: true }
         ).select('-password');
         
-        res.json(updatedUser);
+        res.json({ 
+            message: 'Profile updated successfully',
+            user: updatedUser 
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// Change password
+router.put('/change-password', authMiddleware, async (req, res) => {
+    const { currentPassword, newPassword } = req.body;
+    
+    try {
+        // Get user with password
+        const user = await User.findById(req.user.id);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        
+        // Verify current password
+        const isValidPassword = await bcrypt.compare(currentPassword, user.password);
+        if (!isValidPassword) {
+            return res.status(400).json({ message: 'Current password is incorrect' });
+        }
+        
+        // Hash new password
+        const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+        
+        // Update password
+        await User.findByIdAndUpdate(req.user.id, {
+            password: hashedNewPassword
+        });
+        
+        res.json({ message: 'Password changed successfully' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// Upload avatar
+router.put('/avatar', authMiddleware, upload.single('avatar'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ message: 'No image file provided' });
+        }
+        
+        const avatarPath = req.file.filename;
+        
+        // Update user avatar
+        const updatedUser = await User.findByIdAndUpdate(
+            req.user.id,
+            { avatar: avatarPath },
+            { new: true }
+        ).select('-password');
+        
+        res.json({
+            message: 'Avatar updated successfully',
+            avatar: avatarPath,
+            user: updatedUser
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// Delete account
+router.delete('/account', authMiddleware, async (req, res) => {
+    try {
+        // Delete the user
+        await User.findByIdAndDelete(req.user.id);
+        
+        res.json({ message: 'Account deleted successfully' });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server error' });

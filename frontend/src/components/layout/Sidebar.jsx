@@ -128,9 +128,7 @@ const Sidebar = () => {
             </button>
           </div>
         )}
-      </div>
-
-      {/* Logout button at bottom */}
+      </div>      {/* Logout button at bottom */}
       <div className="mt-auto p-6">
         <button
           onClick={logout}

@@ -295,7 +295,6 @@ export const playlistService = {
       throw error;
     }
   },
-
   // Like/unlike playlist
   togglePlaylistLike: async (playlistId) => {
     try {
@@ -387,4 +386,69 @@ export const playlistService = {
       throw error;
     }
   },
+};
+
+// User Profile service
+export const userService = {
+  // Get user profile
+  getProfile: async () => {
+    try {
+      const res = await apiClient.get('/api/auth/profile');
+      return res.data;
+    } catch (error) {
+      console.error('Error getting user profile:', error);
+      throw error;
+    }
+  },
+
+  // Update user profile
+  updateProfile: async (profileData) => {
+    try {
+      const res = await apiClient.put('/api/auth/profile', profileData);
+      return res.data;
+    } catch (error) {
+      console.error('Error updating user profile:', error);
+      throw error;
+    }
+  },
+
+  // Change password
+  changePassword: async (passwordData) => {
+    try {
+      const res = await apiClient.put('/api/auth/change-password', passwordData);
+      return res.data;
+    } catch (error) {
+      console.error('Error changing password:', error);
+      throw error;
+    }
+  },
+
+  // Upload profile picture
+  uploadAvatar: async (file) => {
+    try {
+      const formData = new FormData();
+      formData.append('avatar', file);
+      
+      const res = await apiClient.put('/api/auth/avatar', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      return res.data;
+    } catch (error) {
+      console.error('Error uploading avatar:', error);
+      throw error;
+    }
+  },
+
+  // Delete account
+  deleteAccount: async () => {
+    try {
+      const res = await apiClient.delete('/api/auth/account');
+      return res.data;
+    } catch (error) {
+      console.error('Error deleting account:', error);
+      throw error;
+    }
+  }
 };

@@ -5,11 +5,13 @@ import MainLayout from '../components/layout/MainLayout';
 import SongRow from '../components/ui/SongRow';
 import { playlistService } from '../services/api';
 import { AudioContext } from '../context/AudioContext';
+import { AuthContext } from '../context/AuthContext';
 import { toast } from 'react-hot-toast';
 
 const Playlist = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useContext(AuthContext);
   const [playlist, setPlaylist] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -18,13 +20,14 @@ const Playlist = () => {
   
   const { playQueue, isPlaying, currentSong, pauseSong, queue } = useContext(AudioContext);
   
-  useEffect(() => {
+  // Check if current user owns this playlist
+  const isOwnPlaylist = playlist && (!playlist.owner || playlist.owner._id === user?.id);
+    useEffect(() => {
     const fetchPlaylist = async () => {
       try {
         setLoading(true);
-        // In a real app, use the playlist ID from params
-        const response = await playlistService.getAllPlaylists();
-        const foundPlaylist = response.find(p => p._id === id);
+        // Use the specific playlist ID endpoint
+        const foundPlaylist = await playlistService.getPlaylistById(id);
         
         if (foundPlaylist) {
           setPlaylist(foundPlaylist);
@@ -40,7 +43,7 @@ const Playlist = () => {
       } finally {
         setLoading(false);
       }
-    };    fetchPlaylist();
+    };fetchPlaylist();
   }, [id]);
   
   const handleDeletePlaylist = async () => {
@@ -148,9 +151,14 @@ const Playlist = () => {
               <h1 className="text-5xl font-bold my-4">{playlist?.name}</h1>
               {playlist?.description && (
                 <p className="text-chakra-subtext mb-2">{playlist.description}</p>
-              )}
-              <div className="flex items-center text-sm text-chakra-subtext">
-                <p className="mr-1">{playlist?.songs?.length || 0} songs</p>
+              )}              <div className="flex items-center text-sm text-chakra-subtext">
+                {playlist?.owner && (
+                  <>
+                    <p className="mr-1">By {playlist.owner.username}</p>
+                    <span>•</span>
+                  </>
+                )}
+                <p className="mx-1">{playlist?.songs?.length || 0} songs</p>
                 <span>•</span>
                 <p className="ml-1">{getTotalDuration()}</p>
               </div>
@@ -180,18 +188,19 @@ const Playlist = () => {
               >
                 <MoreHorizontal size={24} />
               </button>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setShowDeleteModal(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-red-600/20 text-red-400 hover:bg-red-600/30 hover:text-red-300 rounded-lg transition-colors"
-                title="Delete Playlist"
-              >
-                <Trash2 size={16} />
-                Delete Playlist
-              </button>
-            </div>
+            </div>            
+            {isOwnPlaylist && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowDeleteModal(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-600/20 text-red-400 hover:bg-red-600/30 hover:text-red-300 rounded-lg transition-colors"
+                  title="Delete Playlist"
+                >
+                  <Trash2 size={16} />
+                  Delete Playlist
+                </button>
+              </div>
+            )}
           </div>
           
           {/* Song list */}

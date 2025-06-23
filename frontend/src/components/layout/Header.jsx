@@ -1,5 +1,5 @@
 import { useContext } from 'react';
-import { ChevronLeft, ChevronRight, Bell } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
 import UserProfileMenu from '../ui/UserProfileMenu';
@@ -30,15 +30,9 @@ const Header = ({ title }) => {
           <h1 className="ml-6 text-2xl font-bold">{title}</h1>
         )}
       </div>
-      
-      {/* User info and actions */}
+        {/* User info and actions */}
       <div className="flex items-center">
-        <button 
-          className="flex items-center justify-center h-8 w-8 rounded-full bg-black/40 mr-2"
-        >
-          <Bell size={18} />
-        </button>
-          <UserProfileMenu />
+        <UserProfileMenu />
       </div>
     </header>
   );

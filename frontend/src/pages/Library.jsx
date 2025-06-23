@@ -8,26 +8,32 @@ import { toast } from 'react-hot-toast';
 
 const Library = () => {
   const [playlists, setPlaylists] = useState([]);
+  const [publicPlaylists, setPublicPlaylists] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  
-  useEffect(() => {
+  const [activeTab, setActiveTab] = useState('your');
+    useEffect(() => {
     const fetchPlaylists = async () => {
       try {
         setLoading(true);
-        const data = await playlistService.getAllPlaylists();
-        setPlaylists(data);
+        const [userPlaylistsData, publicPlaylistsData] = await Promise.all([
+          playlistService.getAllPlaylists(),
+          playlistService.getPublicPlaylists()
+        ]);
+        setPlaylists(userPlaylistsData);
+        setPublicPlaylists(publicPlaylistsData);
         setError(null);
       } catch (err) {
         console.error('Error fetching playlists:', err);
-        setError('Failed to load your playlists');
+        setError('Failed to load playlists');
         toast.error('Failed to load playlists');
       } finally {
         setLoading(false);
       }
     };
     
-    fetchPlaylists();  }, []);
+    fetchPlaylists();
+  }, []);
   
   // Filter out system playlists that might conflict with Liked Songs
   const userPlaylists = playlists.filter(playlist => {
@@ -75,23 +81,49 @@ const Library = () => {
         }
       }
     }
-  };
-  return (
+  };  return (
     <MainLayout title="Your Library">
       <div className="p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold">Your Library</h1>
+        {/* Header and Tabs */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-3xl font-bold">Your Library</h1>
+            
+            {/* Show cleanup button if "Favorites" playlist exists */}
+            {playlists.some(p => p.name?.toLowerCase() === 'favorites') && (
+              <button
+                onClick={handleDeleteFavoritesPlaylist}
+                className="px-4 py-2 bg-red-600/20 text-red-400 hover:bg-red-600/30 hover:text-red-300 rounded-lg transition-colors text-sm"
+                title="Delete the duplicate Favorites playlist"
+              >
+                🗑️ Remove "Favorites" Playlist
+              </button>
+            )}
+          </div>
           
-          {/* Show cleanup button if "Favorites" playlist exists */}
-          {playlists.some(p => p.name?.toLowerCase() === 'favorites') && (
+          {/* Tab Navigation */}
+          <div className="flex space-x-1 bg-black/30 p-1 rounded-lg backdrop-blur-sm border border-gray-800 w-fit">
             <button
-              onClick={handleDeleteFavoritesPlaylist}
-              className="px-4 py-2 bg-red-600/20 text-red-400 hover:bg-red-600/30 hover:text-red-300 rounded-lg transition-colors text-sm"
-              title="Delete the duplicate Favorites playlist"
+              onClick={() => setActiveTab('your')}
+              className={`px-4 py-2 rounded-md transition-all duration-200 ${
+                activeTab === 'your'
+                  ? 'bg-chakra-accent text-white shadow-lg'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
+              }`}
             >
-              🗑️ Remove "Favorites" Playlist
+              Your Playlists
             </button>
-          )}
+            <button
+              onClick={() => setActiveTab('public')}
+              className={`px-4 py-2 rounded-md transition-all duration-200 ${
+                activeTab === 'public'
+                  ? 'bg-chakra-accent text-white shadow-lg'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
+              }`}
+            >
+              Public Playlists ({publicPlaylists.length})
+            </button>
+          </div>
         </div>
         
         {loading ? (
@@ -104,58 +136,87 @@ const Library = () => {
           </div>
         ) : (
           <div>
-            {/* Special items at the top */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-6 mb-8">
-              {/* Liked Songs */}
-              <Link
-                to="/liked-songs" 
-                className="p-4 rounded-md bg-gradient-to-br from-chakra-accent/40 to-chakra-dark-light hover:bg-chakra-dark-light transition duration-200 cursor-pointer group"
-              >
-                <div className="relative">
-                  <div className="aspect-square rounded-md overflow-hidden shadow-lg mb-4 flex items-center justify-center bg-chakra-accent/20">
-                    <Heart size={64} className="text-chakra-accent" fill="currentColor" />
-                  </div>
-                  <h3 className="font-semibold text-white mb-1">Liked Songs</h3>
-                  <p className="text-sm text-chakra-subtext">Your favorite tracks</p>
+            {/* Your Playlists Tab */}
+            {activeTab === 'your' && (
+              <>
+                {/* Special items at the top */}
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-6 mb-8">
+                  {/* Liked Songs */}
+                  <Link
+                    to="/liked-songs" 
+                    className="p-4 rounded-md bg-gradient-to-br from-chakra-accent/40 to-chakra-dark-light hover:bg-chakra-dark-light transition duration-200 cursor-pointer group"
+                  >
+                    <div className="relative">
+                      <div className="aspect-square rounded-md overflow-hidden shadow-lg mb-4 flex items-center justify-center bg-chakra-accent/20">
+                        <Heart size={64} className="text-chakra-accent" fill="currentColor" />
+                      </div>
+                      <h3 className="font-semibold text-white mb-1">Liked Songs</h3>
+                      <p className="text-sm text-chakra-subtext">Your favorite tracks</p>
+                    </div>
+                  </Link>
+                  
+                  {/* Create Playlist */}
+                  <Link
+                    to="/create-playlist" 
+                    className="p-4 rounded-md bg-chakra-dark-light/50 hover:bg-chakra-dark-light transition duration-200 cursor-pointer group"
+                  >
+                    <div className="relative">
+                      <div className="aspect-square rounded-md overflow-hidden shadow-lg mb-4 flex items-center justify-center bg-chakra-dark-light/80">
+                        <PlusCircle size={64} className="text-chakra-subtext" />
+                      </div>
+                      <h3 className="font-semibold text-white mb-1">Create Playlist</h3>
+                      <p className="text-sm text-chakra-subtext">Add your favorite songs</p>
+                    </div>
+                  </Link>
                 </div>
-              </Link>
-              
-              {/* Create Playlist */}
-              <Link
-                to="/create-playlist" 
-                className="p-4 rounded-md bg-chakra-dark-light/50 hover:bg-chakra-dark-light transition duration-200 cursor-pointer group"
-              >
-                <div className="relative">
-                  <div className="aspect-square rounded-md overflow-hidden shadow-lg mb-4 flex items-center justify-center bg-chakra-dark-light/80">
-                    <PlusCircle size={64} className="text-chakra-subtext" />
+
+                {/* User playlists */}
+                <h2 className="text-xl font-bold mb-4">Your Playlists</h2>
+                {userPlaylists.length > 0 ? (
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+                    {userPlaylists.map((playlist) => (
+                      <PlaylistCard 
+                        key={playlist._id} 
+                        playlist={playlist} 
+                        onDelete={handleDeletePlaylist}
+                      />
+                    ))}
                   </div>
-                  <h3 className="font-semibold text-white mb-1">Create Playlist</h3>
-                  <p className="text-sm text-chakra-subtext">Add your favorite songs</p>
-                </div>
-              </Link>
-            </div>            {/* User playlists */}
-            <h2 className="text-xl font-bold mb-4">Your Playlists</h2>
-            {userPlaylists.length > 0 ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-6">
-                {userPlaylists.map((playlist) => (
-                  <PlaylistCard 
-                    key={playlist._id} 
-                    playlist={playlist} 
-                    onDelete={handleDeletePlaylist}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="bg-chakra-dark-light/30 p-8 rounded-md text-center">
-                <p className="text-chakra-subtext mb-4">You don't have any playlists yet</p>
-                <Link 
-                  to="/create-playlist"
-                  className="inline-flex items-center px-4 py-2 bg-chakra-accent text-white rounded-full hover:bg-opacity-90 transition-opacity"
-                >
-                  <PlusCircle size={18} className="mr-2" />
-                  Create Playlist
-                </Link>
-              </div>
+                ) : (
+                  <div className="bg-chakra-dark-light/30 p-8 rounded-md text-center">
+                    <p className="text-chakra-subtext mb-4">You don't have any playlists yet</p>
+                    <Link 
+                      to="/create-playlist"
+                      className="inline-flex items-center px-4 py-2 bg-chakra-accent text-white rounded-full hover:bg-opacity-90 transition-opacity"
+                    >
+                      <PlusCircle size={18} className="mr-2" />
+                      Create Playlist
+                    </Link>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Public Playlists Tab */}
+            {activeTab === 'public' && (
+              <>
+                <h2 className="text-xl font-bold mb-4">Discover Public Playlists</h2>
+                {publicPlaylists.length > 0 ? (
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+                    {publicPlaylists.map((playlist) => (
+                      <PlaylistCard 
+                        key={playlist._id} 
+                        playlist={playlist} 
+                        isPublic={true}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="bg-chakra-dark-light/30 p-8 rounded-md text-center">
+                    <p className="text-chakra-subtext">No public playlists found</p>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
