@@ -1,0 +1,25 @@
+{
+  "name": "chakras-music",
+  "version": "1.0.0",
+  "description": "Chakras Music Player - Full Stack Application",
+  "main": "index.js",
+  "scripts": {
+    "frontend": "cd frontend && npm run dev",
+    "backend": "cd backend && npm run dev",
+    "scan-music": "cd backend && node seed/scanMusicFolder.js",
+    "seed": "cd backend && npm run seed",
+    "dev": "concurrently \"npm run backend\" \"npm run frontend\""
+  },
+  "keywords": [
+    "music",
+    "player",
+    "react",
+    "express",
+    "mongodb"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "concurrently": "^7.6.0"
+  }
+}
