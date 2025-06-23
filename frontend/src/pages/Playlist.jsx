@@ -1,6 +1,6 @@
 import { useState, useEffect, useContext } from 'react';
-import { useParams } from 'react-router-dom';
-import { Play, Pause, Clock3, MoreHorizontal } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Play, Pause, Clock3, MoreHorizontal, Trash2, Edit3 } from 'lucide-react';
 import MainLayout from '../components/layout/MainLayout';
 import SongRow from '../components/ui/SongRow';
 import { playlistService } from '../services/api';
@@ -9,9 +9,12 @@ import { toast } from 'react-hot-toast';
 
 const Playlist = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [playlist, setPlaylist] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   
   const { playQueue, isPlaying, currentSong, pauseSong, queue } = useContext(AudioContext);
   
@@ -37,10 +40,23 @@ const Playlist = () => {
       } finally {
         setLoading(false);
       }
-    };
-
-    fetchPlaylist();
+    };    fetchPlaylist();
   }, [id]);
+  
+  const handleDeletePlaylist = async () => {
+    try {
+      setDeleting(true);
+      await playlistService.deletePlaylist(id);
+      toast.success('Playlist deleted successfully');
+      navigate('/library');
+    } catch (err) {
+      console.error('Error deleting playlist:', err);
+      toast.error('Failed to delete playlist');
+    } finally {
+      setDeleting(false);
+      setShowDeleteModal(false);
+    }
+  };
   
   // Check if this playlist is currently playing
   const isCurrentPlaylist = () => {
@@ -94,11 +110,16 @@ const Playlist = () => {
           </div>
         </div>
       ) : (
-        <div>
-          {/* Playlist header */}
+        <div>          {/* Playlist header */}
           <div className="flex items-end p-6 bg-gradient-to-b from-chakra-accent/20 to-chakra-dark">
             <div className="w-52 h-52 mr-6 flex-shrink-0 bg-chakra-dark-light/50 shadow-lg rounded-md overflow-hidden">
-              {playlist?.songs && playlist.songs.length > 0 ? (
+              {playlist?.coverImage ? (
+                <img 
+                  src={`http://localhost:5000/uploads/${playlist.coverImage}`} 
+                  alt={playlist.name}
+                  className="w-full h-full object-cover"
+                />
+              ) : playlist?.songs && playlist.songs.length > 0 ? (
                 <div className="grid grid-cols-2 w-full h-full">
                   {playlist.songs.slice(0, 4).map((song, idx) => (
                     <div key={idx} className="w-full h-full overflow-hidden">
@@ -122,9 +143,12 @@ const Playlist = () => {
                 </div>
               )}
             </div>
-            <div>
+            <div className="flex-1">
               <p className="uppercase text-sm font-medium text-chakra-subtext">Playlist</p>
               <h1 className="text-5xl font-bold my-4">{playlist?.name}</h1>
+              {playlist?.description && (
+                <p className="text-chakra-subtext mb-2">{playlist.description}</p>
+              )}
               <div className="flex items-center text-sm text-chakra-subtext">
                 <p className="mr-1">{playlist?.songs?.length || 0} songs</p>
                 <span>•</span>
@@ -132,30 +156,42 @@ const Playlist = () => {
               </div>
             </div>
           </div>
-          
-          {/* Playlist controls */}
-          <div className="p-6 flex items-center">
-            <button 
-              className={`rounded-full p-3 mr-4 ${
-                isCurrentPlaylist() && isPlaying ? 
-                'bg-chakra-accent text-white' : 
-                'bg-chakra-accent text-white hover:scale-105'
-              } transition-transform`}
-              onClick={handlePlayAll}
-            >
-              {isCurrentPlaylist() && isPlaying ? (
-                <Pause size={24} />
-              ) : (
-                <Play size={24} fill="currentColor" />
-              )}
-            </button>
+            {/* Playlist controls */}
+          <div className="p-6 flex items-center justify-between">
+            <div className="flex items-center">
+              <button 
+                className={`rounded-full p-3 mr-4 ${
+                  isCurrentPlaylist() && isPlaying ? 
+                  'bg-chakra-accent text-white' : 
+                  'bg-chakra-accent text-white hover:scale-105'
+                } transition-transform`}
+                onClick={handlePlayAll}
+              >
+                {isCurrentPlaylist() && isPlaying ? (
+                  <Pause size={24} />
+                ) : (
+                  <Play size={24} fill="currentColor" />
+                )}
+              </button>
+              
+              <button 
+                className="text-chakra-subtext hover:text-white p-2"
+                aria-label="More options"
+              >
+                <MoreHorizontal size={24} />
+              </button>
+            </div>
             
-            <button 
-              className="text-chakra-subtext hover:text-white p-2"
-              aria-label="More options"
-            >
-              <MoreHorizontal size={24} />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowDeleteModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-red-600/20 text-red-400 hover:bg-red-600/30 hover:text-red-300 rounded-lg transition-colors"
+                title="Delete Playlist"
+              >
+                <Trash2 size={16} />
+                Delete Playlist
+              </button>
+            </div>
           </div>
           
           {/* Song list */}
@@ -189,7 +225,34 @@ const Playlist = () => {
               <div className="text-center py-12">
                 <p className="text-chakra-subtext">This playlist is empty</p>
               </div>
-            )}
+            )}          </div>
+        </div>
+      )}
+      
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-chakra-dark-light p-6 rounded-lg max-w-md w-full mx-4">
+            <h3 className="text-xl font-bold mb-4">Delete Playlist</h3>
+            <p className="text-chakra-subtext mb-6">
+              Are you sure you want to delete "<strong>{playlist?.name}</strong>"? This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="flex-1 px-4 py-2 bg-chakra-dark text-white rounded hover:bg-chakra-dark-light transition-colors"
+                disabled={deleting}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeletePlaylist}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors disabled:opacity-50"
+                disabled={deleting}
+              >
+                {deleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
           </div>
         </div>
       )}

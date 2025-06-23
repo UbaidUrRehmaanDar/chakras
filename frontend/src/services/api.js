@@ -273,11 +273,10 @@ export const playlistService = {
       throw error;
     }
   },
-
   // Delete playlist
   deletePlaylist: async (playlistId) => {
     try {
-      const res = await axios.delete(`${API_URL}/api/playlists/${playlistId}`);
+      const res = await apiClient.delete(`/api/playlists/${playlistId}`);
       return res.data;
     } catch (error) {
       console.error('Error deleting playlist:', error);
@@ -288,22 +287,21 @@ export const playlistService = {
   // Get playlist by ID
   getPlaylistById: async (playlistId) => {
     try {
-      const res = await axios.get(`${API_URL}/api/playlists/${playlistId}`);
+      const res = await apiClient.get(`/api/playlists/${playlistId}`);
       return res.data;
     } catch (error) {
       console.error(`Error getting playlist ${playlistId}:`, error);
       throw error;
     }
   },
-  
-  // Update playlist image
+    // Update playlist image
   updatePlaylistImage: async (playlistId, imageFile) => {
     try {
       const formData = new FormData();
       formData.append('image', imageFile);
       
-      const res = await axios.put(
-        `${API_URL}/api/playlists/${playlistId}/image`, 
+      const res = await apiClient.put(
+        `/api/playlists/${playlistId}/image`, 
         formData,
         { headers: { 'Content-Type': 'multipart/form-data' } }
       );
@@ -314,14 +312,24 @@ export const playlistService = {
       throw error;
     }
   },
-
   // Update playlist details
   updatePlaylist: async (playlistId, data) => {
     try {
-      const res = await axios.put(`${API_URL}/api/playlists/${playlistId}`, data);
+      const res = await apiClient.put(`/api/playlists/${playlistId}`, data);
       return res.data;
     } catch (error) {
       console.error('Error updating playlist:', error);
+      throw error;
+    }
+  },
+
+  // Delete the "Favorites" playlist specifically
+  deleteFavoritesPlaylist: async () => {
+    try {
+      const res = await apiClient.delete('/api/playlists/cleanup/favorites');
+      return res.data;
+    } catch (error) {
+      console.error('Error deleting Favorites playlist:', error);
       throw error;
     }
   },

@@ -1,9 +1,9 @@
-import { Play, Pause } from 'lucide-react';
+import { Play, Pause, Trash2 } from 'lucide-react';
 import { useState, useContext } from 'react';
 import { Link } from 'react-router-dom';
 import { AudioContext } from '../../context/AudioContext'; // FIXED: use named import
 
-const PlaylistCard = ({ playlist }) => {
+const PlaylistCard = ({ playlist, onDelete }) => {
   const [isHovered, setIsHovered] = useState(false);
   const { playQueue, currentSong, isPlaying, pauseSong, queue } = useContext(AudioContext);
   
@@ -23,8 +23,7 @@ const PlaylistCard = ({ playlist }) => {
       currentQueueIds.every(id => playlistSongIds.includes(id))
     );
   };
-  
-  // Handle play/pause
+    // Handle play/pause
   const handlePlayPause = (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -33,6 +32,15 @@ const PlaylistCard = ({ playlist }) => {
       pauseSong();
     } else {
       playQueue(playlist.songs, 0);
+    }
+  };
+  
+  // Handle delete
+  const handleDelete = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (onDelete) {
+      onDelete(playlist._id);
     }
   };
   
@@ -57,10 +65,15 @@ const PlaylistCard = ({ playlist }) => {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <div className="relative">
-        {/* Playlist cover image collage */}
+      <div className="relative">        {/* Playlist cover image collage */}
         <div className="aspect-square bg-black/30 rounded-md overflow-hidden shadow-lg mb-4">
-          {playlist.songs && playlist.songs.length > 0 ? (
+          {playlist.coverImage ? (
+            <img 
+              src={`http://localhost:5000/uploads/${playlist.coverImage}`}
+              alt={playlist.name}
+              className="w-full h-full object-cover"
+            />
+          ) : playlist.songs && playlist.songs.length > 0 ? (
             <div className="grid grid-cols-2 w-full h-full">
               {coverImages.map((cover, idx) => (
                 <div key={idx} className="overflow-hidden">
@@ -82,6 +95,20 @@ const PlaylistCard = ({ playlist }) => {
             <div className="w-full h-full flex items-center justify-center bg-gray-800 text-4xl">
               🎵
             </div>
+          )}
+          
+          {/* Delete button */}
+          {onDelete && (
+            <button
+              className={`absolute top-2 right-2 rounded-full p-2 bg-red-600/80 text-white transform 
+                transition-all duration-200 
+                ${isHovered ? 'opacity-100' : 'opacity-0'} 
+                hover:bg-red-600 hover:scale-105`}
+              onClick={handleDelete}
+              title="Delete playlist"
+            >
+              <Trash2 size={16} />
+            </button>
           )}
           
           {/* Play button overlay */}
