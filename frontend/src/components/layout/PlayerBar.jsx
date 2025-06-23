@@ -3,11 +3,10 @@ import {
   Play, Pause, SkipBack, SkipForward, Volume2, Volume1, VolumeX, 
   Repeat, Shuffle, ListMusic, Heart, Maximize2, Minimize2, PlusCircle
 } from 'lucide-react';
-import AudioContext from '../../context/AudioContext';
+import { AudioContext } from '../../context/AudioContext'; // FIXED: use named import
 import QueueDisplay from '../ui/QueueDisplay';
 import AddToPlaylistMenu from '../ui/AddToPlaylistMenu';
 import { toast } from 'react-hot-toast';
-import { songService } from '../../services/api';
 
 const PlayerBar = () => {
   // Audio context for player controls
@@ -28,26 +27,21 @@ const PlayerBar = () => {
     toggleShuffle,
     skipToNext,
     skipToPrevious,
-    formatTime
+    formatTime,
+    likedSongs, // Get liked songs from context
+    toggleLike, // Get toggle function from context
   } = useContext(AudioContext);
 
   // Local state
   const [isExpanded, setIsExpanded] = useState(false);
-  const [isLiked, setIsLiked] = useState(false);
   const [isQueueOpen, setIsQueueOpen] = useState(false);
   const [isPlaylistMenuOpen, setIsPlaylistMenuOpen] = useState(false);
   
   // References
   const progressBarRef = useRef(null);
   
-  // Check if song is liked when current song changes
-  useEffect(() => {
-    if (!currentSong) return;
-    
-    // This would normally check against the user's favorites
-    // For demo, we'll just reset it
-    setIsLiked(false);
-  }, [currentSong]);
+  // Determine if the current song is liked
+  const isCurrentSongLiked = currentSong && likedSongs.has(currentSong._id);
 
   // Handle progress bar clicks
   const handleProgressChange = (e) => {
@@ -65,25 +59,10 @@ const PlayerBar = () => {
     setAudioVolume(newVolume);
   };
   
-  // Toggle like status
-  const toggleLike = async () => {
-    if (!currentSong) return;
-    
-    try {
-      if (isLiked) {
-        // Would normally call API to remove from favorites
-        // await songService.removeFromFavorites(currentSong._id);
-        toast.success('Removed from Liked Songs');
-      } else {
-        // Would normally call API to add to favorites
-        // await songService.addToFavorites(currentSong._id);
-        toast.success('Added to Liked Songs');
-      }
-      
-      setIsLiked(!isLiked);
-    } catch (error) {
-      console.error('Error updating favorites:', error);
-      toast.error('Failed to update Liked Songs');
+  // Handle toggling like status
+  const handleToggleLike = () => {
+    if (currentSong) {
+      toggleLike(currentSong._id);
     }
   };
 
@@ -146,12 +125,13 @@ const PlayerBar = () => {
               <div className="overflow-hidden">
                 <h4 className="text-sm font-medium text-white truncate">{currentSong.title}</h4>
                 <p className="text-xs text-gray-400 truncate">{currentSong.artist}</p>
-              </div>              <button 
-                className={`ml-4 p-1 rounded-full ${isLiked ? 'text-chakra-accent' : 'text-gray-400 hover:text-white'}`}
-                onClick={toggleLike}
+              </div>
+              <button 
+                className={`ml-4 p-1 rounded-full ${isCurrentSongLiked ? 'text-chakra-accent' : 'text-gray-400 hover:text-white'}`}
+                onClick={handleToggleLike}
                 title="Like"
               >
-                <Heart size={16} fill={isLiked ? 'currentColor' : 'none'} />
+                <Heart size={16} fill={isCurrentSongLiked ? 'currentColor' : 'none'} />
               </button>
               <button 
                 className="ml-2 p-1 rounded-full text-gray-400 hover:text-white"

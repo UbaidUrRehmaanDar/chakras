@@ -3,7 +3,7 @@ import { Play, Pause, Clock3, MoreHorizontal, Heart } from 'lucide-react';
 import MainLayout from '../components/layout/MainLayout';
 import SongRow from '../components/ui/SongRow';
 import { songService } from '../services/api';
-import AudioContext from '../context/AudioContext';
+import { AudioContext } from '../context/AudioContext';
 import { AuthContext } from '../context/AuthContext';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';

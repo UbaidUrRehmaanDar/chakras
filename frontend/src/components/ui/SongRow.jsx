@@ -1,10 +1,10 @@
 import { Play, Pause, Heart, MoreHorizontal } from 'lucide-react';
 import { useState, useContext, useEffect } from 'react';
-import AudioContext from '../../context/AudioContext';
+import { AudioContext } from '../../context/AudioContext'; // FIXED: use named import
 import { toast } from 'react-hot-toast';
 import { songService } from '../../services/api';
 
-const SongRow = ({ song, index, tableView = false, onLike }) => {
+const SongRow = ({ song, index, tableView = false, onLike, playlist = null }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
   const { 
@@ -47,8 +47,13 @@ const SongRow = ({ song, index, tableView = false, onLike }) => {
     } else if (isCurrentSong && !isPlaying) {
       playSong();
     } else {
-      // Play this song as a single item queue
-      playQueue([song], 0);
+      // If playlist is provided, play from that playlist starting at this song
+      if (playlist && Array.isArray(playlist)) {
+        playQueue(playlist, index);
+      } else {
+        // Fallback: Play this song as a single item queue
+        playQueue([song], 0);
+      }
     }
   };
   

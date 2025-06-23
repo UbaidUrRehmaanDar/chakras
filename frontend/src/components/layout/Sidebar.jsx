@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Home, Search, Library, PlusSquare, Heart, LogOut } from 'lucide-react';
 import { useContext, useEffect, useState } from 'react';
-import AuthContext from '../../context/AuthContext';
+import { AuthContext } from '../../context/AuthContext';
 import { playlistService } from '../../services/api';
 
 const Sidebar = () => {

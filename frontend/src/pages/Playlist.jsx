@@ -4,7 +4,7 @@ import { Play, Pause, Clock3, MoreHorizontal } from 'lucide-react';
 import MainLayout from '../components/layout/MainLayout';
 import SongRow from '../components/ui/SongRow';
 import { playlistService } from '../services/api';
-import AudioContext from '../context/AudioContext';
+import { AudioContext } from '../context/AudioContext';
 import { toast } from 'react-hot-toast';
 
 const Playlist = () => {

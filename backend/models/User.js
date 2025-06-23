@@ -35,10 +35,22 @@ const userSchema = new mongoose.Schema({
             type: String,
             default: ''
         },
+        isPublic: {
+            type: Boolean,
+            default: false
+        },
+        likes: [{
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User'
+        }],
         songs: [{
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Song'
-        }]
+        }],
+        createdAt: {
+            type: Date,
+            default: Date.now
+        }
     }],
     role: {
         type: String,

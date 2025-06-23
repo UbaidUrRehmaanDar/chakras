@@ -1,8 +1,39 @@
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
+const path = require('path');
 const User = require('../models/User');
 const Song = require('../models/Song');
 const authMiddleware = require('../middleware/auth');
+
+// Configure multer for playlist cover image uploads
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, 'uploads/');
+    },
+    filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, 'playlist-' + uniqueSuffix + path.extname(file.originalname));
+    }
+});
+
+const upload = multer({
+    storage: storage,
+    limits: {
+        fileSize: 5 * 1024 * 1024 // 5MB limit
+    },
+    fileFilter: (req, file, cb) => {
+        const allowedTypes = /jpeg|jpg|png|gif/;
+        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+        const mimetype = allowedTypes.test(file.mimetype);
+        
+        if (mimetype && extname) {
+            return cb(null, true);
+        } else {
+            cb(new Error('Only image files are allowed!'));
+        }
+    }
+});
 
 // GET /api/playlists - Get all playlists of the current user
 router.get('/', authMiddleware, async (req, res) => {
@@ -25,7 +56,7 @@ router.get('/', authMiddleware, async (req, res) => {
 
 // POST /api/playlists - Create a new playlist
 router.post('/', authMiddleware, async (req, res) => {
-    const { name } = req.body;
+    const { name, description, isPublic } = req.body;
     
     if (!name) {
         return res.status(400).json({ message: 'Playlist name is required' });
@@ -45,14 +76,26 @@ router.post('/', authMiddleware, async (req, res) => {
         }
         
         // Add new playlist
-        user.playlists.push({
+        const newPlaylist = {
             name,
-            songs: []
-        });
+            description: description || '',
+            isPublic: isPublic || false,
+            songs: [],
+            likes: [],
+            createdAt: new Date()
+        };
         
+        user.playlists.push(newPlaylist);
         await user.save();
         
-        res.status(201).json({ message: 'Playlist created successfully', playlists: user.playlists });
+        // Get the created playlist (last one)
+        const createdPlaylist = user.playlists[user.playlists.length - 1];
+        
+        res.status(201).json({ 
+            message: 'Playlist created successfully', 
+            playlist: createdPlaylist,
+            _id: createdPlaylist._id
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server error' });
@@ -154,6 +197,142 @@ router.delete('/:playlistId', authMiddleware, async (req, res) => {
         await user.save();
         
         res.json({ message: 'Playlist deleted successfully', playlists: user.playlists });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// PUT /api/playlists/:playlistId/cover - Upload playlist cover image
+router.put('/:playlistId/cover', authMiddleware, upload.single('coverImage'), async (req, res) => {
+    const { playlistId } = req.params;
+    
+    try {
+        if (!req.file) {
+            return res.status(400).json({ message: 'No image file provided' });
+        }
+        
+        const user = await User.findById(req.user.id);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        
+        // Find the playlist
+        const playlist = user.playlists.find(p => p._id.toString() === playlistId);
+        if (!playlist) {
+            return res.status(404).json({ message: 'Playlist not found' });
+        }
+        
+        // Update cover image
+        playlist.coverImage = req.file.filename;
+        await user.save();
+        
+        res.json({ 
+            message: 'Cover image updated successfully', 
+            coverImage: req.file.filename,
+            playlist 
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// PUT /api/playlists/:playlistId - Update playlist details
+router.put('/:playlistId', authMiddleware, async (req, res) => {
+    const { playlistId } = req.params;
+    const { name, description, isPublic } = req.body;
+    
+    try {
+        const user = await User.findById(req.user.id);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        
+        // Find the playlist
+        const playlist = user.playlists.find(p => p._id.toString() === playlistId);
+        if (!playlist) {
+            return res.status(404).json({ message: 'Playlist not found' });
+        }
+        
+        // Update playlist details
+        if (name !== undefined) playlist.name = name;
+        if (description !== undefined) playlist.description = description;
+        if (isPublic !== undefined) playlist.isPublic = isPublic;
+        
+        await user.save();
+        
+        res.json({ message: 'Playlist updated successfully', playlist });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// GET /api/playlists/public - Get all public playlists
+router.get('/public', async (req, res) => {
+    try {
+        const users = await User.find({
+            'playlists.isPublic': true
+        }).populate({
+            path: 'playlists.songs',
+            model: 'Song'
+        }).select('username playlists');
+        
+        const publicPlaylists = [];
+        users.forEach(user => {
+            user.playlists.forEach(playlist => {
+                if (playlist.isPublic) {
+                    publicPlaylists.push({
+                        ...playlist.toObject(),
+                        owner: {
+                            _id: user._id,
+                            username: user.username
+                        }
+                    });
+                }
+            });
+        });
+        
+        res.json(publicPlaylists);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// POST /api/playlists/:playlistId/like - Like/unlike a public playlist
+router.post('/:playlistId/like', authMiddleware, async (req, res) => {
+    const { playlistId } = req.params;
+    
+    try {
+        // Find the user who owns the playlist
+        const playlistOwner = await User.findOne({
+            'playlists._id': playlistId,
+            'playlists.isPublic': true
+        });
+        
+        if (!playlistOwner) {
+            return res.status(404).json({ message: 'Public playlist not found' });
+        }
+        
+        const playlist = playlistOwner.playlists.find(p => p._id.toString() === playlistId);
+        const userIdString = req.user.id;
+        
+        // Check if user already liked this playlist
+        const likeIndex = playlist.likes.indexOf(userIdString);
+        
+        if (likeIndex > -1) {
+            // Unlike - remove from likes
+            playlist.likes.splice(likeIndex, 1);
+            await playlistOwner.save();
+            res.json({ message: 'Playlist unliked', isLiked: false, likesCount: playlist.likes.length });
+        } else {
+            // Like - add to likes
+            playlist.likes.push(userIdString);
+            await playlistOwner.save();
+            res.json({ message: 'Playlist liked', isLiked: true, likesCount: playlist.likes.length });
+        }
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server error' });

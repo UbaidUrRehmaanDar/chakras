@@ -1,6 +1,6 @@
 import { useContext, useState, useEffect } from 'react';
 import { X, GripVertical } from 'lucide-react';
-import AudioContext from '../../context/AudioContext';
+import { AudioContext } from '../../context/AudioContext'; // FIXED: use named import
 
 const QueueDisplay = ({ isOpen, onClose }) => {
   const { 

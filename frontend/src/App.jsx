@@ -11,7 +11,7 @@ import Register from './pages/Register';
 import Search from './pages/Search';
 import Playlist from './pages/Playlist';
 import LikedSongs from './pages/LikedSongs';
-import CreatePlaylist from './pages/CreatePlaylist';
+import CreatePlaylist from './pages/CreatePlaylistNew';
 import Library from './pages/Library';
 
 function App() {

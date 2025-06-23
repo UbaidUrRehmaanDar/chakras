@@ -1,7 +1,7 @@
 import { Play, Pause } from 'lucide-react';
 import { useState, useContext } from 'react';
 import { Link } from 'react-router-dom';
-import AudioContext from '../../context/AudioContext';
+import { AudioContext } from '../../context/AudioContext'; // FIXED: use named import
 
 const PlaylistCard = ({ playlist }) => {
   const [isHovered, setIsHovered] = useState(false);

@@ -1,9 +1,12 @@
-import { createContext, useState, useRef, useEffect } from 'react';
+import { createContext, useState, useRef, useEffect, useContext, useCallback } from 'react';
 import { toast } from 'react-hot-toast';
+import { songService } from '../services/api';
+import { AuthContext } from './AuthContext';
 
 export const AudioContext = createContext();
 
 export const AudioProvider = ({ children }) => {
+  const { user } = useContext(AuthContext);
   // Audio state
   const [currentSong, setCurrentSong] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -15,32 +18,162 @@ export const AudioProvider = ({ children }) => {
   const [queueIndex, setQueueIndex] = useState(0);
   const [isRepeat, setIsRepeat] = useState(false);
   const [isShuffle, setIsShuffle] = useState(false);
-  const [originalQueue, setOriginalQueue] = useState([]); // Store the original queue when shuffle is enabled
+  const [originalQueue, setOriginalQueue] = useState([]);
+  const [likedSongs, setLikedSongs] = useState(new Set());
   
-  // Audio element reference
+  // --- Refs for stable functions ---
   const audioRef = useRef(null);
-  
-  // Initialize audio element
+  const isPlayingRef = useRef(isPlaying);
+  const isRepeatRef = useRef(isRepeat);
+  const queueRef = useRef(queue);
+  const queueIndexRef = useRef(queueIndex);
+  const currentSongRef = useRef(currentSong);
+  const skipToNextRef = useRef();
+
+  // --- Keep refs in sync with state ---
+  useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
+  useEffect(() => { isRepeatRef.current = isRepeat; }, [isRepeat]);
+  useEffect(() => { queueRef.current = queue; }, [queue]);
+  useEffect(() => { queueIndexRef.current = queueIndex; }, [queueIndex]);
+  useEffect(() => { currentSongRef.current = currentSong; }, [currentSong]);
+
+  // --- Stable Player Functions ---
+  const playSong = useCallback((song) => {
+    if (!song) return;
+    
+    console.log(`Play command: ${song.title}`); // DEBUG
+    setCurrentSong(song);
+    audioRef.current.src = `http://localhost:5000/music/${song.filePath}`;
+    
+    const playPromise = audioRef.current.play();
+    if (playPromise !== undefined) {
+      playPromise.then(() => {
+        setIsPlaying(true);
+      }).catch(error => {
+        if (error.name === 'AbortError') return;
+        console.error('Playback failed:', error);
+        toast.error('Unable to play this song');
+        setIsPlaying(false);
+      });
+    }
+  }, []);
+
+  const pauseSong = useCallback(() => {
+    console.log(`Pause command`); // DEBUG
+    audioRef.current.pause();
+    setIsPlaying(false);
+  }, []);
+
+  const togglePlayPause = useCallback(() => {
+    if (isPlayingRef.current) {
+      pauseSong();
+    } else if (currentSongRef.current) {
+      playSong(currentSongRef.current);
+    }
+  }, [playSong, pauseSong]);
+
+  const seekTo = useCallback((time) => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = time;
+    }
+  }, []);
+  const skipToNext = useCallback(() => {
+    console.log('Skip to next command - Queue:', queueRef.current.length, 'Index:', queueIndexRef.current); // DEBUG
+    const currentQueue = queueRef.current;
+    
+    if (currentQueue.length === 0) {
+      console.log('No queue available for skip');
+      return;
+    }
+    
+    if (currentQueue.length === 1) {
+      console.log('Only one song in queue, staying on same song');
+      // If only one song, restart it or stay on it
+      if (isRepeatRef.current) {
+        seekTo(0);
+      }
+      return;
+    }
+    
+    // Only go to next if not at the end
+    if (queueIndexRef.current < currentQueue.length - 1) {
+      const nextIndex = queueIndexRef.current + 1;
+      console.log('Moving to next song, index:', nextIndex);
+      playSong(currentQueue[nextIndex]);
+      setQueueIndex(nextIndex);
+    } else {
+      // At the end of queue
+      if (isRepeatRef.current) {
+        console.log('Repeat enabled, going to first song');
+        playSong(currentQueue[0]);
+        setQueueIndex(0);
+      } else {
+        console.log('At end of queue, no repeat');
+        // Stay at current song
+      }
+    }
+  }, [playSong, seekTo]);
+    const skipToPrevious = useCallback(() => {
+    console.log('Skip to previous command - Queue:', queueRef.current.length, 'Index:', queueIndexRef.current); // DEBUG
+    const currentQueue = queueRef.current;
+    
+    if (currentQueue.length === 0) {
+      console.log('No queue available for skip');
+      return;
+    }
+    
+    // If more than 3 seconds have passed, restart current song
+    if (audioRef.current && audioRef.current.currentTime > 3) {
+      console.log('Restarting current song (>3 seconds)');
+      seekTo(0);
+      return;
+    }
+    
+    if (currentQueue.length === 1) {
+      console.log('Only one song in queue, restarting');
+      seekTo(0);
+      return;
+    }
+    
+    // Only go to previous if not at the start
+    if (queueIndexRef.current > 0) {
+      const prevIndex = queueIndexRef.current - 1;
+      console.log('Moving to previous song, index:', prevIndex);
+      playSong(currentQueue[prevIndex]);
+      setQueueIndex(prevIndex);
+    } else {
+      // At the beginning of queue
+      if (isRepeatRef.current) {
+        console.log('Repeat enabled, going to last song');
+        playSong(currentQueue[currentQueue.length - 1]);
+        setQueueIndex(currentQueue.length - 1);
+      } else {
+        console.log('At beginning of queue, restarting current song');
+        seekTo(0);
+      }
+    }
+  }, [playSong, seekTo]);
+
+  // --- Effect for Audio Element ---
+  useEffect(() => {
+    skipToNextRef.current = skipToNext;
+  }, [skipToNext]);
+
   useEffect(() => {
     audioRef.current = new Audio();
-    
-    // Set initial volume
-    audioRef.current.volume = volume;
-    
-    // Event listeners
     const audio = audioRef.current;
     
+    audio.volume = volume;
+
     const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
     const handleDurationChange = () => setDuration(audio.duration);
     const handleEnded = () => {
-      if (isRepeat) {
-        // Repeat the current song
+      console.log('Song ended'); // DEBUG
+      if (isRepeatRef.current) {
         audio.currentTime = 0;
-        audio.play().catch(error => {
-          console.error('Error repeating song:', error);
-        });
+        audio.play();
       } else {
-        skipToNext();
+        skipToNextRef.current?.();
       }
     };
     const handleError = () => {
@@ -53,7 +186,6 @@ export const AudioProvider = ({ children }) => {
     audio.addEventListener('ended', handleEnded);
     audio.addEventListener('error', handleError);
     
-    // Clean up
     return () => {
       audio.pause();
       audio.removeEventListener('timeupdate', handleTimeUpdate);
@@ -61,62 +193,50 @@ export const AudioProvider = ({ children }) => {
       audio.removeEventListener('ended', handleEnded);
       audio.removeEventListener('error', handleError);
     };
-  }, [isRepeat]);
-  
-  // Play song function
-  const playSong = (song) => {
-    if (!song) return;
-    
-    // If this is a different song than current
-    if (!currentSong || currentSong._id !== song._id) {
-      setCurrentSong(song);
-        // Set audio source
-      // Handle both direct filePaths and nested paths
-      const audioUrl = `http://localhost:5000/music/${song.filePath}`;
-      audioRef.current.src = audioUrl;
-      audioRef.current.load();
+  }, []); // This useEffect should only run once.
+
+  // --- Other Functions ---
+  useEffect(() => {
+    if (user) {
+      fetchLikedSongs();
+    } else {
+      setLikedSongs(new Set());
+    }
+  }, [user]);
+
+  const fetchLikedSongs = async () => {
+    try {
+      const favorites = await songService.getFavorites();
+      setLikedSongs(new Set(favorites.map(song => song._id)));
+    } catch (error) {
+      console.error('Failed to fetch liked songs:', error);
+    }
+  };
+
+  const toggleLike = async (songId) => {
+    const newLikedSongs = new Set(likedSongs);
+    let message = '';
+
+    try {
+      if (newLikedSongs.has(songId)) {
+        await songService.removeFromFavorites(songId);
+        newLikedSongs.delete(songId);
+        message = 'Removed from Liked Songs';
+      } else {
+        await songService.addToFavorites(songId);
+        newLikedSongs.add(songId);
+        message = 'Added to Liked Songs';
+      }
       
-      // Reset current time
-      setCurrentTime(0);
-    }
-    
-    // Play the audio
-    audioRef.current.play()
-      .then(() => {
-        setIsPlaying(true);
-      })
-      .catch(error => {
-        console.error('Playback failed:', error);
-        toast.error('Unable to play this song');
-      });
-  };
-  
-  // Pause song function
-  const pauseSong = () => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      setIsPlaying(false);
+      setLikedSongs(newLikedSongs);
+      toast.success(message);
+      
+    } catch (error) {
+      console.error('Error toggling like:', error);
+      toast.error('Failed to update liked songs.');
     }
   };
   
-  // Toggle play/pause
-  const togglePlayPause = () => {
-    if (isPlaying) {
-      pauseSong();
-    } else if (currentSong) {
-      playSong(currentSong);
-    }
-  };
-  
-  // Seek to position
-  const seekTo = (time) => {
-    if (audioRef.current) {
-      audioRef.current.currentTime = time;
-      setCurrentTime(time);
-    }
-  };
-  
-  // Set the volume
   const setAudioVolume = (newVolume) => {
     const volumeValue = Math.min(1, Math.max(0, newVolume));
     setVolume(volumeValue);
@@ -127,7 +247,6 @@ export const AudioProvider = ({ children }) => {
     }
   };
   
-  // Toggle mute
   const toggleMute = () => {
     if (audioRef.current) {
       if (isMuted) {
@@ -140,55 +259,37 @@ export const AudioProvider = ({ children }) => {
     }
   };
   
-  // Shuffle the queue
   const shuffleQueue = (songs) => {
-    // Create a copy of the array
     const shuffled = [...songs];
-    
-    // Fisher-Yates shuffle algorithm
     for (let i = shuffled.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
     }
-    
     return shuffled;
   };
   
-  // Toggle repeat mode
   const toggleRepeat = () => {
     setIsRepeat(!isRepeat);
   };
   
-  // Toggle shuffle mode
   const toggleShuffle = () => {
     const newShuffleState = !isShuffle;
     setIsShuffle(newShuffleState);
     
     if (newShuffleState) {
-      // Store original queue and shuffle current queue
       setOriginalQueue([...queue]);
-      
-      // If we have a current song, make sure it stays as the current song
-      // by removing it first and adding it back at the current position
       if (currentSong && queueIndex !== undefined) {
         const currentSongIndex = queueIndex;
         const newQueue = [...queue];
         const currentSongItem = newQueue.splice(currentSongIndex, 1)[0];
-        
-        // Shuffle the rest
         const shuffledRest = shuffleQueue(newQueue);
-        
-        // Insert the current song back at its position
         shuffledRest.splice(currentSongIndex, 0, currentSongItem);
         setQueue(shuffledRest);
       } else {
-        // No current song, just shuffle the whole queue
         setQueue(shuffleQueue(queue));
       }
     } else {
-      // Restore original queue
       if (originalQueue.length > 0) {
-        // Find current song in original queue
         const originalIndex = currentSong ? originalQueue.findIndex(song => song._id === currentSong._id) : 0;
         setQueue(originalQueue);
         setQueueIndex(originalIndex !== -1 ? originalIndex : 0);
@@ -196,80 +297,66 @@ export const AudioProvider = ({ children }) => {
     }
   };
   
-  // Play a queue of songs
   const playQueue = (songs, startIndex = 0) => {
     if (!songs || songs.length === 0) return;
-    
-    // Set the original queue and apply shuffle if needed
     const songsToPlay = isShuffle ? shuffleQueue(songs) : songs;
-    
     setOriginalQueue(songs);
     setQueue(songsToPlay);
     setQueueIndex(startIndex);
     playSong(songsToPlay[startIndex]);
   };
   
-  // Skip to next song
-  const skipToNext = () => {
-    if (queue.length === 0) return;
-    
-    const nextIndex = (queueIndex + 1) % queue.length;
-    setQueueIndex(nextIndex);
-    playSong(queue[nextIndex]);
-  };
-  
-  // Skip to previous song
-  const skipToPrevious = () => {
-    if (queue.length === 0) return;
-    
-    // If current time > 3 seconds, restart the song instead
-    if (currentTime > 3) {
-      seekTo(0);
+  const addToQueue = (song) => {
+    if (!song) return;
+    if (queue.find((s) => s._id === song._id)) {
+      toast('Song is already in queue.');
       return;
     }
-    
-    const prevIndex = (queueIndex - 1 + queue.length) % queue.length;
-    setQueueIndex(prevIndex);
-    playSong(queue[prevIndex]);
+    const newQueue = [...queue, song];
+    setQueue(newQueue);
+    toast.success('Added to queue');
   };
   
-  // Format time in mm:ss
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
+  const value = {
+    currentSong,
+    isPlaying,
+    duration,
+    currentTime,
+    volume,
+    isMuted,
+    queue,
+    queueIndex,
+    isRepeat,
+    isShuffle,
+    playSong,
+    pauseSong,
+    togglePlayPause,
+    seekTo,
+    setVolume: setAudioVolume,
+    toggleMute,
+    toggleRepeat,
+    toggleShuffle,
+    playQueue,
+    addToQueue,
+    skipToNext,
+    skipToPrevious,
+    formatTime,
+    likedSongs,
+    toggleLike,
+    fetchLikedSongs,
+  };  
   return (
-    <AudioContext.Provider
-      value={{
-        currentSong,
-        isPlaying,
-        duration,
-        currentTime,
-        volume,
-        isMuted,
-        queue,
-        queueIndex,
-        isRepeat,
-        isShuffle,
-        playSong,
-        pauseSong,
-        togglePlayPause,
-        seekTo,
-        setVolume: setAudioVolume,
-        toggleMute,
-        toggleRepeat,
-        toggleShuffle,
-        playQueue,
-        skipToNext,
-        skipToPrevious,
-        formatTime
-      }}
-    >
+    <AudioContext.Provider value={value}>
       {children}
     </AudioContext.Provider>
   );
 };
 
-export default AudioContext;
+// Default export for compatibility
+export default AudioProvider;

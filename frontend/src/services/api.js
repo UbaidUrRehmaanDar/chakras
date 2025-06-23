@@ -182,7 +182,7 @@ export const playlistService = {
   // Get all playlists
   getAllPlaylists: async () => {
     try {
-      const res = await axios.get(`${API_URL}/api/playlists`);
+      const res = await apiClient.get('/api/playlists');
       return res.data;
     } catch (error) {
       console.error('Error getting playlists:', error);
@@ -190,10 +190,21 @@ export const playlistService = {
     }
   },
 
-  // Create new playlist
-  createPlaylist: async (name) => {
+  // Get public playlists
+  getPublicPlaylists: async () => {
     try {
-      const res = await axios.post(`${API_URL}/api/playlists`, { name });
+      const res = await apiClient.get('/api/playlists/public');
+      return res.data;
+    } catch (error) {
+      console.error('Error getting public playlists:', error);
+      throw error;
+    }
+  },
+
+  // Create new playlist
+  createPlaylist: async (playlistData) => {
+    try {
+      const res = await apiClient.post('/api/playlists', playlistData);
       return res.data;
     } catch (error) {
       console.error('Error creating playlist:', error);
@@ -201,10 +212,50 @@ export const playlistService = {
     }
   },
 
+  // Update playlist details
+  updatePlaylist: async (playlistId, updateData) => {
+    try {
+      const res = await apiClient.put(`/api/playlists/${playlistId}`, updateData);
+      return res.data;
+    } catch (error) {
+      console.error('Error updating playlist:', error);
+      throw error;
+    }
+  },
+
+  // Upload playlist cover image
+  uploadPlaylistCover: async (playlistId, file) => {
+    try {
+      const formData = new FormData();
+      formData.append('coverImage', file);
+      
+      const res = await apiClient.put(`/api/playlists/${playlistId}/cover`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      return res.data;
+    } catch (error) {
+      console.error('Error uploading playlist cover:', error);
+      throw error;
+    }
+  },
+
+  // Like/unlike playlist
+  togglePlaylistLike: async (playlistId) => {
+    try {
+      const res = await apiClient.post(`/api/playlists/${playlistId}/like`);
+      return res.data;
+    } catch (error) {
+      console.error('Error toggling playlist like:', error);
+      throw error;
+    }
+  },
+
   // Add song to playlist
   addSongToPlaylist: async (playlistId, songId) => {
     try {
-      const res = await axios.post(`${API_URL}/api/playlists/${playlistId}/songs/${songId}`);
+      const res = await apiClient.post(`/api/playlists/${playlistId}/songs/${songId}`);
       return res.data;
     } catch (error) {
       console.error('Error adding song to playlist:', error);
@@ -215,7 +266,7 @@ export const playlistService = {
   // Remove song from playlist
   removeSongFromPlaylist: async (playlistId, songId) => {
     try {
-      const res = await axios.delete(`${API_URL}/api/playlists/${playlistId}/songs/${songId}`);
+      const res = await apiClient.delete(`/api/playlists/${playlistId}/songs/${songId}`);
       return res.data;
     } catch (error) {
       console.error('Error removing song from playlist:', error);

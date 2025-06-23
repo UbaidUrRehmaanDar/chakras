@@ -1,11 +1,11 @@
 import { Play, Pause, Heart } from 'lucide-react';
 import { useState, useContext, useEffect } from 'react';
-import AudioContext from '../../context/AudioContext';
+import { AudioContext } from '../../context/AudioContext'; // FIXED: use named import
 import { AuthContext } from '../../context/AuthContext';
 import { songService } from '../../services/api';
 import { toast } from 'react-hot-toast';
 
-const SongCard = ({ song, onLike }) => {
+const SongCard = ({ song, onLike, playlist = null }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
   
@@ -49,8 +49,14 @@ const SongCard = ({ song, onLike }) => {
     if (isCurrentSong && isPlaying) {
       pauseSong();
     } else {
-      // Play just this song as a single-item queue
-      playQueue([song], 0);
+      // If playlist is provided, play from that playlist starting at this song
+      if (playlist && Array.isArray(playlist)) {
+        const songIndex = playlist.findIndex(s => s._id === song._id);
+        playQueue(playlist, songIndex >= 0 ? songIndex : 0);
+      } else {
+        // Fallback: Play just this song as a single-item queue
+        playQueue([song], 0);
+      }
     }
   };
   

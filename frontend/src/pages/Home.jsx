@@ -4,7 +4,7 @@ import MainLayout from '../components/layout/MainLayout';
 import SongCard from '../components/ui/SongCard';
 import SongRow from '../components/ui/SongRow';
 import PlaylistCard from '../components/ui/PlaylistCard';
-import AudioContext from '../context/AudioContext';
+import { AudioContext } from '../context/AudioContext';
 
 const Home = () => {
   const [songs, setSongs] = useState([]);
@@ -82,8 +82,7 @@ const Home = () => {
                 ))}
               </div>
             </section>
-            
-            {/* Recently Added */}
+              {/* Recently Added */}
             <section className="mb-8">
               <h2 className="text-2xl font-bold mb-4">Recently Added</h2>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-6">
@@ -91,6 +90,7 @@ const Home = () => {
                   <SongCard 
                     key={song._id} 
                     song={song}
+                    playlist={songs}
                   />
                 ))}
               </div>
@@ -108,8 +108,7 @@ const Home = () => {
                   <div>Artist</div>
                   <div className="text-right">Duration</div>
                 </div>
-                
-                {/* Table Body */}
+                  {/* Table Body */}
                 <div className="px-2">
                   {songs.map((song, index) => (
                     <SongRow 
@@ -117,6 +116,7 @@ const Home = () => {
                       song={song}
                       index={index}
                       tableView={true}
+                      playlist={songs}
                     />
                   ))}
                 </div>

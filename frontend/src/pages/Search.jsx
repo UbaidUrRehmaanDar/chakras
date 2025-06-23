@@ -4,7 +4,7 @@ import SearchInput from '../components/ui/SearchInput';
 import SongRow from '../components/ui/SongRow';
 import { songService } from '../services/api';
 import { Music, Mic, Disc, Play, Pause } from 'lucide-react';
-import AudioContext from '../context/AudioContext';
+import { AudioContext } from '../context/AudioContext';
 
 const Search = () => {
   const [searchQuery, setSearchQuery] = useState('');
