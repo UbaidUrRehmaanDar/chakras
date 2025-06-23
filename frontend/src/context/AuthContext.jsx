@@ -31,10 +31,17 @@ export const AuthProvider = ({ children }) => {
         setLoading(true);
         const res = await axios.get('/api/auth/profile');
         setUser(res.data);
-        setError(null);
-      } catch (err) {
+        setError(null);      } catch (err) {
         console.error('Error loading user:', err.response?.data || err.message);
-        setError(err.response?.data?.message || 'Failed to load user data');
+        
+        let errorMessage = 'Failed to load user data';
+        if (err.code === 'ERR_NETWORK' || err.message === 'Network Error' || !err.response) {
+          errorMessage = 'Cannot connect to server. Please make sure the backend is running.';
+        } else {
+          errorMessage = err.response?.data?.message || 'Failed to load user data';
+        }
+        
+        setError(errorMessage);
         localStorage.removeItem('token');
         setToken(null);
         delete axios.defaults.headers.common['x-auth-token'];
@@ -85,10 +92,16 @@ export const AuthProvider = ({ children }) => {
       }
       
       setError(null);
-      return res.data;
-    } catch (err) {
+      return res.data;    } catch (err) {
       console.error('Login error:', err.response?.data);
-      const errorMessage = err.response?.data?.message || 'Login failed';
+      let errorMessage = 'Login failed';
+      
+      if (err.code === 'ERR_NETWORK' || err.message === 'Network Error' || !err.response) {
+        errorMessage = 'Cannot connect to server. Please make sure the backend is running.';
+      } else {
+        errorMessage = err.response?.data?.message || 'Login failed';
+      }
+      
       setError(errorMessage);
       throw new Error(errorMessage);
     } finally {

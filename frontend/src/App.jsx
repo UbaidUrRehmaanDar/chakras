@@ -13,6 +13,7 @@ import Playlist from './pages/Playlist';
 import LikedSongs from './pages/LikedSongs';
 import CreatePlaylist from './pages/CreatePlaylistNew';
 import Library from './pages/Library';
+import Albums from './pages/Albums';
 
 function App() {
   return (
@@ -63,6 +64,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <Library />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/albums" 
+            element={
+              <ProtectedRoute>
+                <Albums />
               </ProtectedRoute>
             } 
           />

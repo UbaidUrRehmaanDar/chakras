@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Search, Library, PlusSquare, Heart, LogOut } from 'lucide-react';
+import { Home, Search, Library, PlusSquare, Heart, LogOut, Disc3 } from 'lucide-react';
 import { useContext, useEffect, useState } from 'react';
 import { AuthContext } from '../../context/AuthContext';
 import { playlistService } from '../../services/api';
@@ -13,12 +13,12 @@ const Sidebar = () => {
 
   // Check if the current path matches the link
   const isActive = (path) => location.pathname === path;
-
   // Navigation items
   const navItems = [
     { icon: <Home size={22} />, text: 'Home', path: '/' },
     { icon: <Search size={22} />, text: 'Search', path: '/search' },
     { icon: <Library size={22} />, text: 'Library', path: '/library' },
+    { icon: <Disc3 size={22} />, text: 'Albums', path: '/albums' },
   ];
 
   // Library items

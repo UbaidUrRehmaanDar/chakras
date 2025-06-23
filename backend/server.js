@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
+const { exec } = require('child_process');
 const authRoutes = require('./routes/auth');
 const songRoutes = require('./routes/songs');
 const playlistRoutes = require('./routes/playlists');
@@ -57,10 +58,14 @@ app.use((err, req, res, next) => {
 
 // MongoDB connection
 mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
-    .then(() => {
+    .then(async () => {
         console.log('MongoDB connected successfully');
+        
+        // Auto-scan disabled - use manual commands to scan/seed music
+        console.log('🎵 Server ready! Use "npm run scan-music" or "npm run seed" to update music library manually.');
+        
         app.listen(PORT, () => {
-            console.log(`Server is running on http://localhost:${PORT}`);
+            console.log(`🎵 Chakras Music Server is running on http://localhost:${PORT}`);
         });
     })
     .catch(err => {

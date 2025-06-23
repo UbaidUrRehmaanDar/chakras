@@ -172,6 +172,61 @@ export const songService = {
       return res.data;
     } catch (error) {
       console.error(`Error getting songs for album ${albumName}:`, error);
+      throw error;    }
+  }
+};
+
+// Album service
+export const albumService = {
+  // Get all albums
+  getAllAlbums: async () => {
+    try {
+      const res = await apiClient.get('/api/albums');
+      return res.data;
+    } catch (error) {
+      console.error('Error getting albums:', error);
+      throw error;
+    }
+  },
+
+  // Get album by name
+  getAlbumByName: async (albumName) => {
+    try {
+      const res = await apiClient.get(`/api/albums/${encodeURIComponent(albumName)}`);
+      return res.data;
+    } catch (error) {
+      console.error(`Error getting album ${albumName}:`, error);
+      throw error;
+    }
+  },
+  // Get albums by artist
+  getAlbumsByArtist: async (artist) => {
+    try {
+      const res = await apiClient.get(`/api/albums/artist/${encodeURIComponent(artist)}`);
+      return res.data;
+    } catch (error) {
+      console.error(`Error getting albums by artist ${artist}:`, error);
+      throw error;
+    }
+  },
+
+  // Get songs from a specific album
+  getAlbumSongs: async (albumName) => {
+    try {
+      const res = await apiClient.get(`/api/albums/album/${encodeURIComponent(albumName)}`);
+      return res.data;
+    } catch (error) {
+      console.error('Error getting album songs:', error);
+      throw error;
+    }  },
+
+  // Get all singles
+  getSingles: async () => {
+    try {
+      const res = await apiClient.get('/api/albums/singles');
+      return res.data;
+    } catch (error) {
+      console.error('Error getting singles:', error);
       throw error;
     }
   }
@@ -326,8 +381,7 @@ export const playlistService = {
   // Delete the "Favorites" playlist specifically
   deleteFavoritesPlaylist: async () => {
     try {
-      const res = await apiClient.delete('/api/playlists/cleanup/favorites');
-      return res.data;
+      const res = await apiClient.delete('/api/playlists/cleanup/favorites');      return res.data;
     } catch (error) {
       console.error('Error deleting Favorites playlist:', error);
       throw error;

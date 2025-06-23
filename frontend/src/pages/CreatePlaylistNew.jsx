@@ -19,18 +19,25 @@ const CreatePlaylist = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
-  
-  useEffect(() => {
+    useEffect(() => {
     const fetchSongs = async () => {
       try {
         setLoading(true);
         const allSongs = await songService.getAllSongs();
-        setSongs(allSongs);
+        setSongs(Array.isArray(allSongs) ? allSongs : []);
         setError(null);
       } catch (err) {
         console.error('Error fetching songs:', err);
-        setError('Failed to load songs');
-        toast.error('Failed to load songs');
+        setSongs([]); // Set empty array as fallback
+        
+        // Better error handling for network issues
+        if (err.code === 'ERR_NETWORK' || err.message === 'Network Error' || !err.response) {
+          setError('Cannot connect to server. Please make sure the backend is running.');
+        } else {
+          setError('Failed to load songs');
+        }
+        
+        toast.error('Failed to load songs. Please check your connection.');
       } finally {
         setLoading(false);
       }
@@ -145,13 +152,12 @@ const CreatePlaylist = () => {
   const isSongSelected = (songId) => {
     return selectedSongs.some(song => song._id === songId);
   };
-
   // Filter songs based on search term
-  const filteredSongs = songs.filter(song => 
-    song.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    song.artist.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    song.album.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredSongs = Array.isArray(songs) ? songs.filter(song => 
+    song?.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    song?.artist?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    song?.album?.toLowerCase().includes(searchTerm.toLowerCase())
+  ) : [];
 
   return (
     <MainLayout>

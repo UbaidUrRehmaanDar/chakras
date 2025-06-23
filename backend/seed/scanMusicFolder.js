@@ -7,7 +7,8 @@ const mm = require('music-metadata');
 
 // Directory to scan
 const MUSIC_DIR = 'D:/Music';
-const MAX_SONGS = 20; // Limit the number of songs for initial seeding
+// Remove the song limit for full library scanning
+// const MAX_SONGS = 20; // Removed limit for automatic rescanning
 
 // Ensure uploads directory exists
 const UPLOADS_DIR = path.join(__dirname, '..', 'uploads');
@@ -15,27 +16,30 @@ if (!fs.existsSync(UPLOADS_DIR)) {
   fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 }
 
-// Function to scan the music directory
-async function scanMusicDirectory(dir) {
+// Function to scan the music directory recursively
+async function scanMusicDirectory(dir, depth = 0) {
   try {
+    console.log(`${'  '.repeat(depth)}📁 Scanning: ${dir}`);
     const files = await readdir(dir);
     const musicFiles = [];
     let count = 0;
 
     for (const file of files) {
-      if (count >= MAX_SONGS) break;
-
       const filePath = path.join(dir, file);
       const stats = await stat(filePath);
 
       if (stats.isDirectory()) {
-        // Skip directories for simplicity
+        // Recursively scan subdirectories (limit depth to avoid infinite loops)
+        if (depth < 3) {
+          const subDirFiles = await scanMusicDirectory(filePath, depth + 1);
+          musicFiles.push(...subDirFiles);
+        }
         continue;
       }
 
       // Check if it's a music file (mp3, m4a, wav, etc.)
       const ext = path.extname(file).toLowerCase();
-      if (['.mp3', '.m4a', '.wav', '.flac', '.ogg'].includes(ext)) {
+      if (['.mp3', '.m4a', '.wav', '.flac', '.ogg', '.aac'].includes(ext)) {
         try {
           // Extract metadata from the music file
           const metadata = await mm.parseFile(filePath);
@@ -71,12 +75,11 @@ async function scanMusicDirectory(dir) {
             duration,
             coverImage,
             filePath: path.relative(MUSIC_DIR, filePath).replace(/\\/g, '/'), // Store relative path
-          });
-          
+          });          
           count++;
-          console.log(`Processed: ${title} by ${artist}`);
+          console.log(`${'  '.repeat(depth + 1)}🎵 ${count}. ${title} by ${artist} (${album})`);
         } catch (metadataError) {
-          console.error(`Error processing metadata for ${file}:`, metadataError.message);
+          console.error(`${'  '.repeat(depth + 1)}❌ Error processing metadata for ${file}:`, metadataError.message);
           
           // Add a basic entry without metadata
           musicFiles.push({
@@ -93,9 +96,10 @@ async function scanMusicDirectory(dir) {
       }
     }
 
+    console.log(`${'  '.repeat(depth)}✅ Found ${musicFiles.length} music files in ${dir}`);
     return musicFiles;
   } catch (error) {
-    console.error('Error scanning music directory:', error);
+    console.error(`❌ Error scanning music directory ${dir}:`, error);
     return [];
   }
 }
@@ -103,13 +107,19 @@ async function scanMusicDirectory(dir) {
 // Update the seed file
 async function updateSeedFile() {
   try {
+    console.log('🎵 Starting music library scan...');
+    console.log(`📂 Scanning directory: ${MUSIC_DIR}`);
+    
     // Get music files
     const songs = await scanMusicDirectory(MUSIC_DIR);
     
     if (songs.length === 0) {
-      console.log('No music files found in the directory');
+      console.log('❌ No music files found in the directory');
+      console.log(`📍 Make sure the directory exists and contains music files: ${MUSIC_DIR}`);
       return;
     }
+
+    console.log(`🎶 Found ${songs.length} total songs!`);
 
     // Create seed data content
     const seedData = `const mongoose = require('mongoose');
@@ -119,7 +129,7 @@ const Song = require('../models/Song');
 // Load environment variables
 dotenv.config();
 
-// Sample song data
+// Sample song data (Auto-generated from music scan)
 const sampleSongs = ${JSON.stringify(songs, null, 2)};
 
 // Function to seed the database
@@ -138,7 +148,20 @@ const seedDatabase = async () => {
     
     // Insert new songs
     await Song.insertMany(sampleSongs);
-    console.log('Sample songs seeded successfully!');
+    console.log(\`✅ \${sampleSongs.length} songs seeded successfully!\`);
+    
+    // Log album statistics
+    const albumStats = {};
+    sampleSongs.forEach(song => {
+      if (song.album !== 'Unknown Album') {
+        albumStats[song.album] = (albumStats[song.album] || 0) + 1;
+      }
+    });
+    
+    console.log(\`📀 Found \${Object.keys(albumStats).length} albums:\`);
+    Object.entries(albumStats).forEach(([album, count]) => {
+      console.log(\`   • \${album}: \${count} song\${count !== 1 ? 's' : ''}\`);
+    });
     
     // Close the connection
     mongoose.connection.close();
@@ -158,9 +181,19 @@ seedDatabase();
       seedData
     );
     
-    console.log(`Successfully created seed file with ${songs.length} songs!`);
+    console.log(`✅ Successfully created seed file with ${songs.length} songs!`);
+    
+    // Log some statistics
+    const albumCount = new Set(songs.map(s => s.album).filter(a => a !== 'Unknown Album')).size;
+    const artistCount = new Set(songs.map(s => s.artist).filter(a => a !== 'Unknown Artist')).size;
+    
+    console.log(`📊 Library Statistics:`);
+    console.log(`   🎵 Songs: ${songs.length}`);
+    console.log(`   👤 Artists: ${artistCount}`);
+    console.log(`   📀 Albums: ${albumCount}`);
+    
   } catch (error) {
-    console.error('Error updating seed file:', error);
+    console.error('❌ Error updating seed file:', error);
   }
 }
 

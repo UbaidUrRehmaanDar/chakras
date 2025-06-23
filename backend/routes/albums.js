@@ -3,15 +3,15 @@ const router = express.Router();
 const Song = require('../models/Song');
 const authMiddleware = require('../middleware/auth');
 
-// GET /api/songs/albums - Get all unique album names
+// GET /api/albums - Get all unique albums with enhanced data
 router.get('/', async (req, res) => {
     try {
-        // Get all unique album names that are not 'Single' or 'Unknown Album'
+        // Get all unique albums with enhanced metadata
         const albums = await Song.aggregate([
             { 
                 $match: { 
                     album: { 
-                        $nin: ['Single', 'Unknown Album', ''] 
+                        $nin: ['Single', 'Unknown Album', '', null] 
                     } 
                 } 
             },
@@ -20,12 +20,34 @@ router.get('/', async (req, res) => {
                     _id: "$album",
                     artist: { $first: "$artist" },
                     coverImage: { $first: "$coverImage" },
-                    songCount: { $sum: 1 }
+                    genre: { $first: "$genre" },
+                    songCount: { $sum: 1 },
+                    totalDuration: { $sum: "$duration" },
+                    songs: { 
+                        $push: {
+                            _id: "$_id",
+                            title: "$title",
+                            duration: "$duration"
+                        }
+                    }
                 } 
             },
             { 
+                $project: {
+                    albumName: "$_id",
+                    artist: 1,
+                    coverImage: 1,
+                    genre: 1,
+                    songCount: 1,
+                    totalDuration: 1,
+                    songs: 1,
+                    _id: 0
+                }
+            },
+            { 
                 $sort: { 
-                    _id: 1 
+                    artist: 1,
+                    albumName: 1 
                 } 
             }
         ]);
