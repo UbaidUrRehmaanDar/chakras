@@ -180,17 +180,15 @@ router.delete('/:playlistId', authMiddleware, async (req, res) => {
         
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
-        }
-        
-        // Don't allow deleting the Favorites playlist
+        }        // Check if playlist exists
         const playlist = user.playlists.find(p => p._id.toString() === playlistId);
         if (!playlist) {
             return res.status(404).json({ message: 'Playlist not found' });
         }
         
-        if (playlist.name === 'Favorites') {
-            return res.status(400).json({ message: 'Cannot delete the Favorites playlist' });
-        }
+        // Don't allow deleting system playlists that are still needed
+        // (Removed protection for "Favorites" since user wants it deleted)
+        // You can add protection for other system playlists here if needed
         
         // Remove playlist
         user.playlists = user.playlists.filter(p => p._id.toString() !== playlistId);
@@ -333,6 +331,36 @@ router.post('/:playlistId/like', authMiddleware, async (req, res) => {
             await playlistOwner.save();
             res.json({ message: 'Playlist liked', isLiked: true, likesCount: playlist.likes.length });
         }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });    }
+});
+
+// DELETE /api/playlists/cleanup/favorites - Remove the "Favorites" playlist specifically
+router.delete('/cleanup/favorites', authMiddleware, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id);
+        
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        
+        // Find and remove the "Favorites" playlist
+        const favoritesPlaylist = user.playlists.find(p => p.name.toLowerCase() === 'favorites');
+        
+        if (!favoritesPlaylist) {
+            return res.status(404).json({ message: 'Favorites playlist not found' });
+        }
+        
+        // Remove the Favorites playlist
+        user.playlists = user.playlists.filter(p => p.name.toLowerCase() !== 'favorites');
+        await user.save();
+        
+        res.json({ 
+            message: 'Favorites playlist deleted successfully', 
+            deletedPlaylist: favoritesPlaylist.name,
+            remainingPlaylists: user.playlists.length
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server error' });
