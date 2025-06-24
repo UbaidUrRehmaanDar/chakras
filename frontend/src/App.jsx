@@ -4,7 +4,6 @@ import { AuthProvider } from './context/AuthContext';
 import { AudioProvider } from './context/AudioContext';
 import ProtectedRoute from './components/ProtectedRoute';
 
-// Pages
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -38,11 +37,11 @@ function App() {
           />
           
           <Routes>
-            {/* Public Routes */}
+            {}
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             
-            {/* Protected Routes */}
+            {}
           <Route 
             path="/" 
             element={
@@ -99,7 +98,7 @@ function App() {
             } 
           />
           
-          {/* Redirect any unknown routes to home */}
+          {}
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
         </AudioProvider>

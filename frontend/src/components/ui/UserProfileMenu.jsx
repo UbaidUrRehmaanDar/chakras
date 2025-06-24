@@ -1,6 +1,5 @@
 import { useState, useContext, useRef, useEffect } from 'react';
-import { User, LogOut, Settings, ChevronDown, Upload, X } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { User, LogOut, ChevronDown, Upload, X } from 'lucide-react';
 import { AuthContext } from '../../context/AuthContext';
 import { toast } from 'react-hot-toast';
 import { uploadService } from '../../services/uploadApi';
@@ -150,18 +149,8 @@ const UserProfileMenu = () => {
               </div>
             </div>
           </div>
-          
-          {/* Menu items */}
+            {/* Menu items */}
           <div className="py-1">
-            <Link 
-              to="/settings" 
-              className="flex items-center px-4 py-2 text-sm text-chakra-text hover:bg-black/30 transition"
-              onClick={() => setIsOpen(false)}
-            >
-              <Settings size={16} className="mr-2" />
-              Account Settings
-            </Link>
-            
             <button 
               onClick={() => {
                 logout();

@@ -3,7 +3,7 @@ import MainLayout from '../components/layout/MainLayout';
 import SearchInput from '../components/ui/SearchInput';
 import SongRow from '../components/ui/SongRow';
 import { songService } from '../services/api';
-import { Music, Mic, Disc, Play, Pause } from 'lucide-react';
+import { Music, Play, Pause } from 'lucide-react';
 import { AudioContext } from '../context/AudioContext';
 
 const Search = () => {
@@ -55,8 +55,7 @@ const Search = () => {
       queueIds.every((id, index) => id === searchResultIds[index])
     );
   };
-  
-  // Handle play all button
+    // Handle play all button
   const handlePlayAll = () => {
     if (searchResults.length === 0) return;
     
@@ -66,13 +65,6 @@ const Search = () => {
       playQueue(searchResults, 0);
     }
   };
-  
-  // Categories for empty state
-  const categories = [
-    { name: 'Top Genres', icon: <Music size={40} className="text-purple-500" /> },
-    { name: 'New Releases', icon: <Disc size={40} className="text-green-500" /> },
-    { name: 'Popular Artists', icon: <Mic size={40} className="text-blue-500" /> },
-  ];
 
   return (
     <MainLayout>
@@ -137,36 +129,14 @@ const Search = () => {
                 </div>
               </div>
             )}
-          </div>
-        ) : (
-          // Display browse categories when no search query
-          <div>
-            <h2 className="text-2xl font-bold mb-6">Browse All</h2>
-            
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {categories.map((category, index) => (
-                <div 
-                  key={index} 
-                  className="bg-gradient-to-br from-chakra-dark-light to-gray-800 p-6 rounded-lg cursor-pointer hover:shadow-lg transition duration-200"
-                >
-                  <div className="mb-4">{category.icon}</div>
-                  <h3 className="text-lg font-semibold">{category.name}</h3>
-                </div>
-              ))}
-              
-              {/* More category placeholders */}
-              {Array(5).fill(0).map((_, index) => (
-                <div 
-                  key={`placeholder-${index}`} 
-                  className="bg-gradient-to-br from-chakra-dark-light to-gray-800 p-6 rounded-lg cursor-pointer hover:shadow-lg transition duration-200"
-                >
-                  <div className="mb-4 flex items-center justify-center h-10 w-10 rounded-full bg-chakra-accent">
-                    <Music size={20} />
-                  </div>
-                  <h3 className="text-lg font-semibold">Category {index + 4}</h3>
-                </div>
-              ))}
+          </div>        ) : (
+          // Display message when no search query
+          <div className="text-center py-12">
+            <div className="mb-4 flex items-center justify-center h-16 w-16 rounded-full bg-chakra-accent/20 mx-auto">
+              <Music size={32} className="text-chakra-accent" />
             </div>
+            <h2 className="text-2xl font-bold mb-2">Search for music</h2>
+            <p className="text-chakra-subtext">Find your favorite songs, artists, and albums</p>
           </div>
         )}
       </div>

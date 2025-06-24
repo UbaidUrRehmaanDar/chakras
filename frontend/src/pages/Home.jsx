@@ -13,17 +13,14 @@ const Home = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
-  // Use global audio context instead of local state
   const { currentSong, isPlaying } = useContext(AudioContext);
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        // Fetch songs
         const songsData = await songService.getAllSongs();
         setSongs(songsData);
         
-        // Fetch user playlists and public playlists
         try {
           const [playlistsData, publicPlaylistsData] = await Promise.all([
             playlistService.getAllPlaylists(),
@@ -49,7 +46,6 @@ const Home = () => {
           ]);
           setPublicPlaylists([]);
         }
-        
         setError(null);
       } catch (err) {
         console.error('Error fetching data:', err);
@@ -74,7 +70,7 @@ const Home = () => {
             {error}
           </div>
         ) : (          <>
-            {/* Your Playlists */}
+            {}
             {playlists.length > 0 && (
               <section className="mb-8">
                 <h2 className="text-2xl font-bold mb-4">Your Playlists</h2>
@@ -89,7 +85,7 @@ const Home = () => {
               </section>
             )}
 
-            {/* Public Playlists */}
+            {}
             {publicPlaylists.length > 0 && (
               <section className="mb-8">
                 <h2 className="text-2xl font-bold mb-4">Discover Public Playlists</h2>
@@ -105,7 +101,7 @@ const Home = () => {
               </section>
             )}
 
-            {/* Recently Added */}
+            {}
             <section className="mb-8">
               <h2 className="text-2xl font-bold mb-4">Recently Added</h2>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-6">
@@ -119,11 +115,11 @@ const Home = () => {
               </div>
             </section>
             
-            {/* All Songs */}
+            {}
             <section>
               <h2 className="text-2xl font-bold mb-4">All Songs</h2>
               <div className="bg-chakra-dark-light/30 rounded-md overflow-hidden">
-                {/* Table Header */}
+                {}
                 <div className="grid grid-cols-[16px_4fr_3fr_2fr_1fr] gap-4 p-2 px-4 border-b border-gray-700/50 text-sm text-chakra-subtext font-medium">
                   <div>#</div>
                   <div>Title</div>
@@ -131,7 +127,7 @@ const Home = () => {
                   <div>Artist</div>
                   <div className="text-right">Duration</div>
                 </div>
-                  {/* Table Body */}
+                  {}
                 <div className="px-2">
                   {songs.map((song, index) => (
                     <SongRow 
